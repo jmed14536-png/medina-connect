@@ -1,17 +1,636 @@
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+"use client";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyC0pF2cfrCqd2QNsvctnUDvVeQWFFpv7L0",
-  authDomain: "medina-connect-4d9c3.firebaseapp.com",
-  projectId: "medina-connect-4d9c3",
-  storageBucket: "medina-connect-4d9c3.firebasestorage.app",
-  messagingSenderId: "425029597760",
-  appId: "1:425029597760:web:c29dda1d23527164517da5",
+import { useEffect, useState } from "react";
+import { db, auth, storage } from "../lib/firebase";
+
+import {
+  collection,
+  addDoc,
+  query,
+  orderBy,
+  onSnapshot,
+  serverTimestamp,
+  deleteDoc,
+  doc,
+  getDocs,
+} from "firebase/firestore";
+
+import {
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut,
+} from "firebase/auth";
+
+import {
+  ref,
+  uploadBytes,
+  getDownloadURL,
+} from "firebase/storage";
+
+const profiles = {
+  "dad@medinaconnect.com": {
+    name: "Dad",
+    avatar: "/photos/dad-baby.jpeg",
+  },
+  "isaak@medinaconnect.com": {
+    name: "Isaak",
+    avatar: "/photos/kids-diner.jpeg",
+  },
+  "rachel@medinaconnect.com": {
+    name: "Rachel",
+    avatar: "/photos/dad-daughter-baby.jpeg",
+  },
 };
 
-const app = initializeApp(firebaseConfig);
+const spanishWords = [
+  { word: "Familia", meaning: "Family", example: "Mi familia es mi corazón." },
+  { word: "Amor", meaning: "Love", example: "El amor nos mantiene unidos." },
+  { word: "Siempre", meaning: "Always", example: "Siempre estoy contigo." },
+  { word: "Fuerza", meaning: "Strength", example: "Nuestra familia tiene fuerza." },
+  { word: "Sonrisa", meaning: "Smile", example: "Tu sonrisa alegra mi día." },
+  { word: "Sueño", meaning: "Dream", example: "Nunca dejes tu sueño." },
+  { word: "Corazón", meaning: "Heart", example: "Mi corazón está con ustedes." },
+  { word: "Valiente", meaning: "Brave", example: "Eres fuerte y valiente." },
+  { word: "Recuerdo", meaning: "Memory", example: "Este recuerdo vive en mi corazón." },
+  { word: "Juntos", meaning: "Together", example: "Aunque estemos lejos, estamos juntos." },
+];
 
-export const db = getFirestore(app);
-export const auth = getAuth(app);
+const weeklyChallenges = [
+  {
+    title: "Try Something New",
+    task: "Try a new food, song, show, hobby, or place this week.",
+    followUp: "Come back and tell the family what you tried and if you liked it.",
+  },
+  {
+    title: "Family Song Pick",
+    task: "Each person picks one song they like this week.",
+    followUp: "Share the song name in the chat and why you picked it.",
+  },
+  {
+    title: "Kindness Mission",
+    task: "Do one kind thing for someone without expecting anything back.",
+    followUp: "Tell us what you did and how it made you feel.",
+  },
+  {
+    title: "Memory Week",
+    task: "Share one favorite memory with Dad, Isaak, or Rachel.",
+    followUp: "Post it in the family chat.",
+  },
+  {
+    title: "Learn Something",
+    task: "Learn one new fact, skill, word, or idea this week.",
+    followUp: "Teach it to the family in the chat.",
+  },
+  {
+    title: "Outside Challenge",
+    task: "Spend at least 15 minutes outside one day this week.",
+    followUp: "Tell us what you saw, heard, or felt.",
+  },
+  {
+    title: "Watch Something New",
+    task: "Try a new show, movie, cartoon, anime, or documentary.",
+    followUp: "Give it a rating from 1 to 10.",
+  },
+  {
+    title: "Gratitude Challenge",
+    task: "Name three things you are thankful for this week.",
+    followUp: "Share them in the family chat.",
+  },
+];
+
+function getDailySpanishWord() {
+  const today = new Date();
+  const start = new Date(today.getFullYear(), 0, 0);
+  const dayOfYear = Math.floor((today - start) / (1000 * 60 * 60 * 24));
+  return spanishWords[dayOfYear % spanishWords.length];
+}
+
+function getWeeklyChallenge() {
+  const today = new Date();
+  const start = new Date(today.getFullYear(), 0, 1);
+  const diff = today - start;
+  const weekNumber = Math.floor(diff / (1000 * 60 * 60 * 24 * 7));
+  return weeklyChallenges[weekNumber % weeklyChallenges.length];
+}
+
+export default function Home() {
+  const [user, setUser] = useState(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState([]);
+
+  const [chismeText, setChismeText] = useState("");
+  const [chismeImage, setChismeImage] = useState(null);
+  const [chismePosts, setChismePosts] = useState([]);
+  const [postingChisme, setPostingChisme] = useState(false);
+
+  const [topic, setTopic] = useState("What made you smile today?");
+  const [dailyWord] = useState(getDailySpanishWord());
+  const [weeklyChallenge] = useState(getWeeklyChallenge());
+
+  const topics = [
+    "What made you smile today?",
+    "What was your favorite moment this week?",
+    "What’s something you appreciate today?",
+    "What’s a funny memory we share?",
+    "If we could travel anywhere together where would we go?",
+    "What’s something that inspires you lately?",
+  ];
+
+  const photos = [
+    "/photos/dad-baby.jpeg",
+    "/photos/kids-diner.jpeg",
+    "/photos/dad-kids-night.jpeg",
+    "/photos/dad-daughter-baby.jpeg",
+  ];
+
+  const currentProfile = user ? profiles[user.email] : null;
+  const isDad = user?.email === "dad@medinaconnect.com";
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const q = query(collection(db, "messages"), orderBy("createdAt"));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setMessages(
+        snapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        }))
+      );
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const q = query(collection(db, "chismePosts"), orderBy("createdAt", "desc"));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setChismePosts(
+        snapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        }))
+      );
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  async function login(e) {
+    e.preventDefault();
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch {
+      alert("Login failed");
+    }
+  }
+
+  async function logout() {
+    await signOut(auth);
+  }
+
+  async function sendMessage(e) {
+    e.preventDefault();
+
+    if (!message.trim()) return;
+
+    await addDoc(collection(db, "messages"), {
+      name: currentProfile?.name || user.email,
+      email: user.email,
+      avatar: currentProfile?.avatar || "/photos/dad-baby.jpeg",
+      text: message,
+      createdAt: serverTimestamp(),
+    });
+
+    setMessage("");
+  }
+
+  async function deleteMessage(messageId) {
+    if (!isDad) return;
+
+    const confirmDelete = window.confirm("Delete this message?");
+    if (!confirmDelete) return;
+
+    await deleteDoc(doc(db, "messages", messageId));
+  }
+
+  async function clearChat() {
+    if (!isDad) return;
+
+    const confirmClear = window.confirm(
+      "Are you sure you want to delete ALL family chat messages?"
+    );
+
+    if (!confirmClear) return;
+
+    const snapshot = await getDocs(collection(db, "messages"));
+
+    const deletePromises = snapshot.docs.map((messageDoc) =>
+      deleteDoc(doc(db, "messages", messageDoc.id))
+    );
+
+    await Promise.all(deletePromises);
+  }
+
+  async function createChismePost(e) {
+    e.preventDefault();
+
+    if (!chismeText.trim() && !chismeImage) {
+      alert("Add a message or photo first.");
+      return;
+    }
+
+    setPostingChisme(true);
+
+    try {
+      let imageUrl = "";
+
+      if (chismeImage) {
+        const imageRef = ref(
+          storage,
+          `chisme/${user.uid}-${Date.now()}-${chismeImage.name}`
+        );
+
+        await uploadBytes(imageRef, chismeImage);
+        imageUrl = await getDownloadURL(imageRef);
+      }
+
+      await addDoc(collection(db, "chismePosts"), {
+        name: currentProfile?.name || user.email,
+        email: user.email,
+        avatar: currentProfile?.avatar || "/photos/dad-baby.jpeg",
+        text: chismeText,
+        imageUrl,
+        createdAt: serverTimestamp(),
+      });
+
+      setChismeText("");
+      setChismeImage(null);
+    } catch (error) {
+      alert("Could not post chisme. Make sure Firebase Storage is enabled.");
+    }
+
+    setPostingChisme(false);
+  }
+
+  async function deleteChismePost(postId) {
+    if (!isDad) return;
+
+    const confirmDelete = window.confirm("Delete this chisme post?");
+    if (!confirmDelete) return;
+
+    await deleteDoc(doc(db, "chismePosts", postId));
+  }
+
+  function randomTopic() {
+    const random = topics[Math.floor(Math.random() * topics.length)];
+    setTopic(random);
+  }
+
+  if (!user) {
+    return (
+      <main className="min-h-screen bg-black flex items-center justify-center p-4">
+        <div className="bg-[#0c1020] border-4 border-purple-700 rounded-3xl p-6 w-full max-w-md text-white shadow-[8px_8px_0px_#000]">
+          <h1 className="text-5xl font-black italic text-center mb-1">
+            MEDINA
+          </h1>
+
+          <h2 className="text-4xl font-black italic text-center text-red-500 mb-6">
+            CONNECT ❤️
+          </h2>
+
+          <form onSubmit={login} className="space-y-4">
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full p-3 rounded-xl bg-black border-2 border-white/20"
+            />
+
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-3 rounded-xl bg-black border-2 border-white/20"
+            />
+
+            <button className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-3 rounded-xl border-2 border-black">
+              LOGIN
+            </button>
+          </form>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-black flex justify-center overflow-x-hidden">
+      <div
+        className="w-full max-w-[1024px] min-h-screen relative text-white"
+        style={{
+          background:
+            "linear-gradient(180deg,#b40018 0%,#29003d 45%,#060606 100%)",
+        }}
+      >
+        <div
+          className="absolute inset-0 opacity-20 pointer-events-none"
+          style={{
+            backgroundImage: "radial-gradient(#ffffff 1px, transparent 1px)",
+            backgroundSize: "14px 14px",
+          }}
+        />
+
+        <div className="relative z-10 px-3 py-4">
+          <div className="flex justify-between items-center mb-2">
+            <div className="flex items-center gap-2 bg-black/70 border border-white/20 px-3 py-2 rounded-lg">
+              <img
+                src={currentProfile?.avatar}
+                alt=""
+                className="w-8 h-8 rounded-full object-cover border-2 border-white"
+              />
+              <span className="font-black">{currentProfile?.name}</span>
+            </div>
+
+            <button
+              onClick={logout}
+              className="bg-black/70 border border-white/20 px-4 py-2 rounded-lg"
+            >
+              Logout
+            </button>
+          </div>
+
+          <div className="text-center mb-4">
+            <h1
+              className="text-5xl sm:text-6xl md:text-8xl font-black italic leading-none tracking-tight"
+              style={{ textShadow: "6px 6px 0px #000" }}
+            >
+              MEDINA
+            </h1>
+
+            <h2
+              className="text-4xl sm:text-5xl md:text-7xl font-black italic text-red-500 -mt-1 md:-mt-2"
+              style={{ textShadow: "6px 6px 0px #000" }}
+            >
+              CONNECT ❤️
+            </h2>
+
+            <div className="inline-block mt-3 bg-yellow-300 text-black font-black px-4 py-2 border-4 border-black rotate-[-2deg] text-xs sm:text-sm md:text-base">
+              NO MATTER WHERE LIFE TAKES US,
+              <br />
+              WE’RE ALWAYS CONNECTED BY LOVE. ❤️
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_280px] gap-4">
+            <div className="space-y-4">
+              <ComicPhoto src={photos[0]} label="FAMILY IS MY SUPERPOWER!" />
+              <ComicPhoto
+                src={photos[2]}
+                label="TOGETHER WE CAN DO ANYTHING!"
+                tall
+              />
+            </div>
+
+            <div className="space-y-4 pt-0 lg:pt-10">
+              <Panel title="💬 DAILY TOPIC">
+                <div className="bg-white text-black rounded-2xl border-4 border-black p-4 text-center text-lg sm:text-xl md:text-2xl font-black">
+                  {topic}
+                </div>
+
+                <button
+                  onClick={randomTopic}
+                  className="mt-4 w-full bg-purple-700 hover:bg-purple-800 text-white text-lg sm:text-xl md:text-2xl font-black py-3 rounded-xl border-4 border-black"
+                >
+                  ⚡ NEW TOPIC
+                </button>
+              </Panel>
+
+              <Panel title="⚡ WEEKLY FAMILY CHALLENGE">
+                <div className="bg-yellow-300 text-black rounded-2xl border-4 border-black p-4">
+                  <h3 className="text-2xl font-black mb-2">
+                    {weeklyChallenge.title}
+                  </h3>
+                  <p className="font-bold">{weeklyChallenge.task}</p>
+                  <p className="mt-3 italic">{weeklyChallenge.followUp}</p>
+                </div>
+              </Panel>
+
+              <Panel title="📣 FAMILY CHISME">
+                <form onSubmit={createChismePost} className="space-y-3 mb-4">
+                  <textarea
+                    value={chismeText}
+                    onChange={(e) => setChismeText(e.target.value)}
+                    placeholder="Post family chisme, a thought, update, or memory..."
+                    className="w-full min-h-[90px] bg-black border-2 border-white/20 rounded-xl px-3 py-3 text-white"
+                  />
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setChismeImage(e.target.files[0])}
+                    className="w-full text-sm"
+                  />
+
+                  <button
+                    disabled={postingChisme}
+                    className="w-full bg-yellow-300 hover:bg-yellow-400 text-black font-black py-3 rounded-xl border-4 border-black"
+                  >
+                    {postingChisme ? "POSTING..." : "POST CHISME"}
+                  </button>
+                </form>
+
+                <div className="space-y-4 max-h-[520px] overflow-y-auto pr-1">
+                  {chismePosts.length === 0 && (
+                    <p className="text-gray-400">No chisme yet 👀</p>
+                  )}
+
+                  {chismePosts.map((post) => (
+                    <div
+                      key={post.id}
+                      className="bg-black/70 border-2 border-white/20 rounded-2xl p-3"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <img
+                          src={
+                            post.avatar ||
+                            profiles[post.email]?.avatar ||
+                            "/photos/dad-baby.jpeg"
+                          }
+                          alt=""
+                          className="w-9 h-9 rounded-full object-cover border-2 border-white"
+                        />
+                        <p className="font-black text-yellow-300">
+                          {post.name || profiles[post.email]?.name || post.email}
+                        </p>
+
+                        {isDad && (
+                          <button
+                            onClick={() => deleteChismePost(post.id)}
+                            className="ml-auto text-red-400 hover:text-red-300 font-black text-xs"
+                          >
+                            DELETE
+                          </button>
+                        )}
+                      </div>
+
+                      {post.text && <p className="mb-3">{post.text}</p>}
+
+                      {post.imageUrl && (
+                        <img
+                          src={post.imageUrl}
+                          alt="Family chisme"
+                          className="w-full rounded-xl border-2 border-white/20"
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+
+              <Panel title="💬 FAMILY CHAT">
+                {isDad && (
+                  <button
+                    onClick={clearChat}
+                    className="mb-3 w-full bg-red-800 hover:bg-red-900 text-white font-black py-2 rounded-xl border-2 border-black"
+                  >
+                    🗑️ CLEAR CHAT
+                  </button>
+                )}
+
+                <div className="h-72 overflow-y-auto bg-black/80 border border-white/20 rounded-xl p-3 mb-3 space-y-3">
+                  {messages.length === 0 && (
+                    <p className="text-gray-400">No messages yet ❤️</p>
+                  )}
+
+                  {messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className="flex gap-3 border-b border-white/10 pb-3"
+                    >
+                      <img
+                        src={
+                          msg.avatar ||
+                          profiles[msg.email]?.avatar ||
+                          "/photos/dad-baby.jpeg"
+                        }
+                        alt=""
+                        className="w-10 h-10 rounded-full object-cover border-2 border-white flex-shrink-0"
+                      />
+
+                      <div className="flex-1">
+                        <p className="font-black text-cyan-300">
+                          {msg.name || profiles[msg.email]?.name || msg.email}
+                        </p>
+                        <p>{msg.text}</p>
+                      </div>
+
+                      {isDad && (
+                        <button
+                          onClick={() => deleteMessage(msg.id)}
+                          className="text-red-400 hover:text-red-300 font-black text-sm"
+                        >
+                          DELETE
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <form
+                  onSubmit={sendMessage}
+                  className="grid grid-cols-1 sm:grid-cols-[1fr_90px] gap-2"
+                >
+                  <input
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Type a message..."
+                    className="bg-black border-2 border-white/20 rounded-lg px-3 py-3 text-white"
+                  />
+
+                  <button className="bg-red-600 hover:bg-red-700 rounded-lg border-2 border-black font-black py-3">
+                    SEND
+                  </button>
+                </form>
+              </Panel>
+
+              <Panel title="📚 PALABRA DEL DÍA">
+                <div className="bg-black/70 border-2 border-purple-500 rounded-xl p-4">
+                  <h3 className="text-4xl font-black text-yellow-300">
+                    {dailyWord.word}
+                  </h3>
+
+                  <p className="text-white text-lg">{dailyWord.meaning}</p>
+
+                  <p className="italic text-gray-300 mt-2">
+                    “{dailyWord.example}”
+                  </p>
+                </div>
+              </Panel>
+            </div>
+
+            <div className="space-y-4">
+              <ComicPhoto src={photos[1]} label="BEST BUDDIES!" />
+              <ComicPhoto
+                src={photos[3]}
+                label="LITTLE MEMORIES, BIG LOVE!"
+                tall
+              />
+            </div>
+          </div>
+
+          <div className="mt-6 bg-white text-black font-black text-center py-3 border-4 border-black rotate-[-1deg] text-sm sm:text-base">
+            ONE FAMILY. ONE HEART. ALWAYS CONNECTED. 💜
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function Panel({ title, children }) {
+  return (
+    <div className="bg-[#060814] border-4 border-purple-700 rounded-2xl p-4 shadow-[6px_6px_0px_#000]">
+      <h2 className="text-2xl sm:text-3xl md:text-4xl font-black italic mb-4">
+        {title}
+      </h2>
+
+      {children}
+    </div>
+  );
+}
+
+function ComicPhoto({ src, label, tall }) {
+  return (
+    <div className="relative bg-white border-4 border-black p-2 rotate-[-2deg] shadow-[7px_7px_0px_#000]">
+      <div
+        className={`overflow-hidden ${
+          tall ? "h-[360px] sm:h-[420px]" : "h-[300px] sm:h-[330px]"
+        }`}
+      >
+        <img src={src} alt="" className="w-full h-full object-cover" />
+      </div>
+
+      <div className="absolute bottom-4 left-3 right-3 bg-white text-black border-4 border-black font-black text-center px-3 py-2 text-lg sm:text-2xl italic">
+        {label} ❤️
+      </div>
+    </div>
+  );
+}
