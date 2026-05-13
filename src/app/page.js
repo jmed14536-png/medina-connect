@@ -36,6 +36,26 @@ const profiles = {
   },
 };
 
+const spanishWords = [
+  { word: "Familia", meaning: "Family", example: "Mi familia es mi corazón." },
+  { word: "Amor", meaning: "Love", example: "El amor nos mantiene unidos." },
+  { word: "Siempre", meaning: "Always", example: "Siempre estoy contigo." },
+  { word: "Fuerza", meaning: "Strength", example: "Nuestra familia tiene fuerza." },
+  { word: "Sonrisa", meaning: "Smile", example: "Tu sonrisa alegra mi día." },
+  { word: "Sueño", meaning: "Dream", example: "Nunca dejes tu sueño." },
+  { word: "Corazón", meaning: "Heart", example: "Mi corazón está con ustedes." },
+  { word: "Valiente", meaning: "Brave", example: "Eres fuerte y valiente." },
+  { word: "Recuerdo", meaning: "Memory", example: "Este recuerdo vive en mi corazón." },
+  { word: "Juntos", meaning: "Together", example: "Aunque estemos lejos, estamos juntos." },
+];
+
+function getDailySpanishWord() {
+  const today = new Date();
+  const start = new Date(today.getFullYear(), 0, 0);
+  const dayOfYear = Math.floor((today - start) / (1000 * 60 * 60 * 24));
+  return spanishWords[dayOfYear % spanishWords.length];
+}
+
 export default function Home() {
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState("");
@@ -45,6 +65,7 @@ export default function Home() {
   const [messages, setMessages] = useState([]);
 
   const [topic, setTopic] = useState("What made you smile today?");
+  const [dailyWord] = useState(getDailySpanishWord());
 
   const topics = [
     "What made you smile today?",
@@ -341,13 +362,13 @@ export default function Home() {
               <Panel title="📚 PALABRA DEL DÍA">
                 <div className="bg-black/70 border-2 border-purple-500 rounded-xl p-4">
                   <h3 className="text-4xl font-black text-yellow-300">
-                    Familia
+                    {dailyWord.word}
                   </h3>
 
-                  <p className="text-white text-lg">Family</p>
+                  <p className="text-white text-lg">{dailyWord.meaning}</p>
 
                   <p className="italic text-gray-300 mt-2">
-                    “Mi familia es mi corazón.”
+                    “{dailyWord.example}”
                   </p>
                 </div>
               </Panel>
