@@ -7,7 +7,7 @@ import {
   collection,
   addDoc,
   query,
-  orderBy,
+ orderBy,
   onSnapshot,
   serverTimestamp,
   deleteDoc,
@@ -37,95 +37,69 @@ const profiles = {
 };
 
 const spanishWords = [
-  { word: "Familia", meaning: "Family", example: "Mi familia es mi corazón." },
-  { word: "Amor", meaning: "Love", example: "El amor nos mantiene unidos." },
-  { word: "Siempre", meaning: "Always", example: "Siempre estoy contigo." },
-  { word: "Fuerza", meaning: "Strength", example: "Nuestra familia tiene fuerza." },
-  { word: "Sonrisa", meaning: "Smile", example: "Tu sonrisa alegra mi día." },
-  { word: "Sueño", meaning: "Dream", example: "Nunca dejes tu sueño." },
-  { word: "Corazón", meaning: "Heart", example: "Mi corazón está con ustedes." },
-  { word: "Valiente", meaning: "Brave", example: "Eres fuerte y valiente." },
-  { word: "Recuerdo", meaning: "Memory", example: "Este recuerdo vive en mi corazón." },
-  { word: "Juntos", meaning: "Together", example: "Aunque estemos lejos, estamos juntos." },
+  {
+    word: "Familia",
+    meaning: "Family",
+    example: "Mi familia es mi corazón.",
+  },
+  {
+    word: "Amor",
+    meaning: "Love",
+    example: "El amor nos mantiene unidos.",
+  },
+  {
+    word: "Siempre",
+    meaning: "Always",
+    example: "Siempre estoy contigo.",
+  },
 ];
 
 const weeklyChallenges = [
   {
     title: "Try Something New",
-    task: "Try a new food, song, show, hobby, or place this week.",
-    followUp: "Come back and tell the family what you tried and if you liked it.",
-  },
-  {
-    title: "Family Song Pick",
-    task: "Each person picks one song they like this week.",
-    followUp: "Share the song name in the chat and why you picked it.",
+    task: "Try a new food, song, show, or activity this week.",
+    followUp: "Tell the family what you thought.",
   },
   {
     title: "Kindness Mission",
-    task: "Do one kind thing for someone without expecting anything back.",
-    followUp: "Tell us what you did and how it made you feel.",
-  },
-  {
-    title: "Memory Week",
-    task: "Share one favorite memory with Dad, Isaak, or Rachel.",
-    followUp: "Post it in the family chat.",
-  },
-  {
-    title: "Learn Something",
-    task: "Learn one new fact, skill, word, or idea this week.",
-    followUp: "Teach it to the family in the chat.",
-  },
-  {
-    title: "Outside Challenge",
-    task: "Spend at least 15 minutes outside one day this week.",
-    followUp: "Tell us what you saw, heard, or felt.",
-  },
-  {
-    title: "Watch Something New",
-    task: "Try a new show, movie, cartoon, anime, or documentary.",
-    followUp: "Give it a rating from 1 to 10.",
-  },
-  {
-    title: "Gratitude Challenge",
-    task: "Name three things you are thankful for this week.",
-    followUp: "Share them in the family chat.",
+    task: "Do one kind thing this week.",
+    followUp: "Share what happened.",
   },
 ];
 
 function getDailySpanishWord() {
   const today = new Date();
-  const start = new Date(today.getFullYear(), 0, 0);
-  const dayOfYear = Math.floor((today - start) / (1000 * 60 * 60 * 24));
-  return spanishWords[dayOfYear % spanishWords.length];
+  return spanishWords[today.getDate() % spanishWords.length];
 }
 
 function getWeeklyChallenge() {
   const today = new Date();
-  const start = new Date(today.getFullYear(), 0, 1);
-  const diff = today - start;
-  const weekNumber = Math.floor(diff / (1000 * 60 * 60 * 24 * 7));
-  return weeklyChallenges[weekNumber % weeklyChallenges.length];
+  return weeklyChallenges[today.getDay() % weeklyChallenges.length];
 }
 
 export default function Home() {
   const [user, setUser] = useState(null);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
 
-  const [topic, setTopic] = useState("What made you smile today?");
-  const [dailyWord] = useState(getDailySpanishWord());
-  const [weeklyChallenge] = useState(getWeeklyChallenge());
+  const [chismeText, setChismeText] = useState("");
+  const [chismePosts, setChismePosts] = useState([]);
+
+  const [topic, setTopic] = useState(
+    "What made you smile today?"
+  );
+
+  const dailyWord = getDailySpanishWord();
+  const weeklyChallenge = getWeeklyChallenge();
 
   const topics = [
     "What made you smile today?",
-    "What was your favorite moment this week?",
+    "What was your favorite part of this week?",
     "What’s something you appreciate today?",
-    "What’s a funny memory we share?",
-    "If we could travel anywhere together where would we go?",
-    "What’s something that inspires you lately?",
   ];
 
   const photos = [
@@ -135,13 +109,20 @@ export default function Home() {
     "/photos/dad-daughter-baby.jpeg",
   ];
 
-  const currentProfile = user ? profiles[user.email] : null;
-  const isDad = user?.email === "dad@medinaconnect.com";
+  const currentProfile = user
+    ? profiles[user.email]
+    : null;
+
+  const isDad =
+    user?.email === "dad@medinaconnect.com";
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (currentUser) => {
+        setUser(currentUser);
+      }
+    );
 
     return () => unsubscribe();
   }, []);
@@ -149,10 +130,33 @@ export default function Home() {
   useEffect(() => {
     if (!user) return;
 
-    const q = query(collection(db, "messages"), orderBy("createdAt"));
+    const q = query(
+      collection(db, "messages"),
+      orderBy("createdAt")
+    );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setMessages(
+        snapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        }))
+      );
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const q = query(
+      collection(db, "chismePosts"),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setChismePosts(
         snapshot.docs.map((docSnap) => ({
           id: docSnap.id,
           ...docSnap.data(),
@@ -167,7 +171,11 @@ export default function Home() {
     e.preventDefault();
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
     } catch {
       alert("Login failed");
     }
@@ -183,9 +191,8 @@ export default function Home() {
     if (!message.trim()) return;
 
     await addDoc(collection(db, "messages"), {
-      name: currentProfile?.name || user.email,
-      email: user.email,
-      avatar: currentProfile?.avatar || "/photos/dad-baby.jpeg",
+      name: currentProfile?.name,
+      avatar: currentProfile?.avatar,
       text: message,
       createdAt: serverTimestamp(),
     });
@@ -193,51 +200,54 @@ export default function Home() {
     setMessage("");
   }
 
-  async function deleteMessage(messageId) {
-    if (!isDad) return;
+  async function createChismePost(e) {
+    e.preventDefault();
 
-    const confirmDelete = window.confirm("Delete this message?");
-    if (!confirmDelete) return;
+    if (!chismeText.trim()) return;
 
-    await deleteDoc(doc(db, "messages", messageId));
+    await addDoc(collection(db, "chismePosts"), {
+      name: currentProfile?.name,
+      avatar: currentProfile?.avatar,
+      text: chismeText,
+      createdAt: serverTimestamp(),
+    });
+
+    setChismeText("");
   }
 
   async function clearChat() {
     if (!isDad) return;
 
-    const confirmClear = window.confirm(
-      "Are you sure you want to delete ALL family chat messages?"
+    const snapshot = await getDocs(
+      collection(db, "messages")
     );
 
-    if (!confirmClear) return;
-
-    const snapshot = await getDocs(collection(db, "messages"));
-
-    const deletePromises = snapshot.docs.map((messageDoc) =>
-      deleteDoc(doc(db, "messages", messageDoc.id))
+    const deletePromises = snapshot.docs.map(
+      (messageDoc) =>
+        deleteDoc(doc(db, "messages", messageDoc.id))
     );
 
     await Promise.all(deletePromises);
   }
 
   function randomTopic() {
-    const random = topics[Math.floor(Math.random() * topics.length)];
+    const random =
+      topics[Math.floor(Math.random() * topics.length)];
+
     setTopic(random);
   }
 
   if (!user) {
     return (
       <main className="min-h-screen bg-black flex items-center justify-center p-4">
-        <div className="bg-[#0c1020] border-4 border-purple-700 rounded-3xl p-6 w-full max-w-md text-white shadow-[8px_8px_0px_#000]">
-          <h1 className="text-5xl font-black italic text-center mb-1">
+        <div className="bg-[#0c1020] border-4 border-purple-700 rounded-3xl p-6 w-full max-w-md text-white">
+          <h1 className="text-5xl font-black italic text-center">
             MEDINA
           </h1>
 
           <h2 className="text-4xl font-black italic text-center text-red-500 mb-6">
             CONNECT ❤️
-          </h2>
-
-          <form onSubmit={login} className="space-y-4">
+          </h2>          <form onSubmit={login} className="space-y-4">
             <input
               type="email"
               placeholder="Email"
@@ -254,7 +264,7 @@ export default function Home() {
               className="w-full p-3 rounded-xl bg-black border-2 border-white/20"
             />
 
-            <button className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-3 rounded-xl border-2 border-black">
+            <button className="w-full bg-red-600 text-white font-black py-3 rounded-xl">
               LOGIN
             </button>
           </form>
@@ -265,189 +275,166 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-black flex justify-center overflow-x-hidden">
-      <div
-        className="w-full max-w-[1024px] min-h-screen relative text-white"
-        style={{
-          background:
-            "linear-gradient(180deg,#b40018 0%,#29003d 45%,#060606 100%)",
-        }}
-      >
-        <div
-          className="absolute inset-0 opacity-20 pointer-events-none"
-          style={{
-            backgroundImage: "radial-gradient(#ffffff 1px, transparent 1px)",
-            backgroundSize: "14px 14px",
-          }}
-        />
-
-        <div className="relative z-10 px-3 py-4">
-          <div className="flex justify-between items-center mb-2">
-            <div className="flex items-center gap-2 bg-black/70 border border-white/20 px-3 py-2 rounded-lg">
-              <img
-                src={currentProfile?.avatar}
-                alt=""
-                className="w-8 h-8 rounded-full object-cover border-2 border-white"
-              />
-              <span className="font-black">{currentProfile?.name}</span>
-            </div>
-
-            <button
-              onClick={logout}
-              className="bg-black/70 border border-white/20 px-4 py-2 rounded-lg"
-            >
-              Logout
-            </button>
+      <div className="w-full max-w-[1024px] text-white p-4">
+        <div className="flex justify-between items-center mb-3">
+          <div className="flex items-center gap-2 bg-black/70 border border-white/20 px-3 py-2 rounded-lg">
+            <img
+              src={currentProfile?.avatar}
+              alt=""
+              className="w-8 h-8 rounded-full object-cover border-2 border-white"
+            />
+            <span className="font-black">{currentProfile?.name}</span>
           </div>
 
-          <div className="text-center mb-4">
-            <h1
-              className="text-5xl sm:text-6xl md:text-8xl font-black italic leading-none tracking-tight"
-              style={{ textShadow: "6px 6px 0px #000" }}
-            >
-              MEDINA
-            </h1>
+          <button
+            onClick={logout}
+            className="bg-black/70 border border-white/20 px-4 py-2 rounded-lg"
+          >
+            Logout
+          </button>
+        </div>
 
-            <h2
-              className="text-4xl sm:text-5xl md:text-7xl font-black italic text-red-500 -mt-1 md:-mt-2"
-              style={{ textShadow: "6px 6px 0px #000" }}
-            >
-              CONNECT ❤️
-            </h2>
+        <div className="text-center mb-6">
+          <h1 className="text-5xl sm:text-6xl md:text-8xl font-black italic">
+            MEDINA
+          </h1>
+          <h2 className="text-4xl sm:text-5xl md:text-7xl font-black italic text-red-500">
+            CONNECT ❤️
+          </h2>
+        </div>
 
-            <div className="inline-block mt-3 bg-yellow-300 text-black font-black px-4 py-2 border-4 border-black rotate-[-2deg] text-xs sm:text-sm md:text-base">
-              NO MATTER WHERE LIFE TAKES US,
-              <br />
-              WE’RE ALWAYS CONNECTED BY LOVE. ❤️
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_280px] gap-4">
+          <div className="space-y-4">
+            <ComicPhoto src={photos[0]} label="FAMILY IS MY SUPERPOWER!" />
+            <ComicPhoto src={photos[2]} label="TOGETHER WE CAN DO ANYTHING!" />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_280px] gap-4">
-            <div className="space-y-4">
-              <ComicPhoto src={photos[0]} label="FAMILY IS MY SUPERPOWER!" />
-              <ComicPhoto
-                src={photos[2]}
-                label="TOGETHER WE CAN DO ANYTHING!"
-                tall
-              />
-            </div>
+          <div className="space-y-4">
+            <Panel title="💬 DAILY TOPIC">
+              <div className="bg-white text-black rounded-xl p-4 text-center font-black text-xl">
+                {topic}
+              </div>
 
-            <div className="space-y-4 pt-0 lg:pt-10">
-              <Panel title="💬 DAILY TOPIC">
-                <div className="bg-white text-black rounded-2xl border-4 border-black p-4 text-center text-lg sm:text-xl md:text-2xl font-black">
-                  {topic}
-                </div>
+              <button
+                onClick={randomTopic}
+                className="mt-4 w-full bg-purple-700 text-white py-3 rounded-xl font-black"
+              >
+                ⚡ NEW TOPIC
+              </button>
+            </Panel>
 
-                <button
-                  onClick={randomTopic}
-                  className="mt-4 w-full bg-purple-700 hover:bg-purple-800 text-white text-lg sm:text-xl md:text-2xl font-black py-3 rounded-xl border-4 border-black"
-                >
-                  ⚡ NEW TOPIC
+            <Panel title="⚡ WEEKLY CHALLENGE">
+              <div className="bg-yellow-300 text-black rounded-xl p-4">
+                <h3 className="font-black text-2xl">{weeklyChallenge.title}</h3>
+                <p>{weeklyChallenge.task}</p>
+                <p className="italic mt-2">{weeklyChallenge.followUp}</p>
+              </div>
+            </Panel>
+
+            <Panel title="📣 FAMILY CHISME">
+              <form onSubmit={createChismePost} className="space-y-3 mb-4">
+                <textarea
+                  value={chismeText}
+                  onChange={(e) => setChismeText(e.target.value)}
+                  placeholder="Share family chisme, updates, jokes, memories..."
+                  className="w-full min-h-[100px] bg-black border-2 border-white/20 rounded-xl p-3 text-white"
+                />
+
+                <button className="w-full bg-yellow-300 text-black py-3 rounded-xl font-black">
+                  POST CHISME
                 </button>
-              </Panel>
+              </form>
 
-              <Panel title="⚡ WEEKLY FAMILY CHALLENGE">
-                <div className="bg-yellow-300 text-black rounded-2xl border-4 border-black p-4">
-                  <h3 className="text-2xl font-black mb-2">
-                    {weeklyChallenge.title}
-                  </h3>
-                  <p className="font-bold">{weeklyChallenge.task}</p>
-                  <p className="mt-3 italic">{weeklyChallenge.followUp}</p>
-                </div>
-              </Panel>
-
-              <Panel title="💬 FAMILY CHAT">
-                {isDad && (
-                  <button
-                    onClick={clearChat}
-                    className="mb-3 w-full bg-red-800 hover:bg-red-900 text-white font-black py-2 rounded-xl border-2 border-black"
-                  >
-                    🗑️ CLEAR CHAT
-                  </button>
+              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                {chismePosts.length === 0 && (
+                  <p className="text-gray-400">No chisme yet 👀</p>
                 )}
 
-                <div className="h-72 overflow-y-auto bg-black/80 border border-white/20 rounded-xl p-3 mb-3 space-y-3">
-                  {messages.length === 0 && (
-                    <p className="text-gray-400">No messages yet ❤️</p>
-                  )}
-
-                  {messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className="flex gap-3 border-b border-white/10 pb-3"
-                    >
+                {chismePosts.map((post) => (
+                  <div
+                    key={post.id}
+                    className="bg-black/70 border border-white/20 rounded-xl p-3"
+                  >
+                    <div className="flex items-center gap-2 mb-2">
                       <img
-                        src={
-                          msg.avatar ||
-                          profiles[msg.email]?.avatar ||
-                          "/photos/dad-baby.jpeg"
-                        }
+                        src={post.avatar}
                         alt=""
-                        className="w-10 h-10 rounded-full object-cover border-2 border-white flex-shrink-0"
+                        className="w-10 h-10 rounded-full object-cover"
                       />
 
-                      <div className="flex-1">
-                        <p className="font-black text-cyan-300">
-                          {msg.name || profiles[msg.email]?.name || msg.email}
-                        </p>
-                        <p>{msg.text}</p>
-                      </div>
-
-                      {isDad && (
-                        <button
-                          onClick={() => deleteMessage(msg.id)}
-                          className="text-red-400 hover:text-red-300 font-black text-sm"
-                        >
-                          DELETE
-                        </button>
-                      )}
+                      <p className="font-black text-yellow-300">{post.name}</p>
                     </div>
-                  ))}
-                </div>
 
-                <form
-                  onSubmit={sendMessage}
-                  className="grid grid-cols-1 sm:grid-cols-[1fr_90px] gap-2"
+                    <p>{post.text}</p>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+
+            <Panel title="💬 FAMILY CHAT">
+              {isDad && (
+                <button
+                  onClick={clearChat}
+                  className="mb-3 w-full bg-red-700 py-2 rounded-xl font-black"
                 >
-                  <input
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Type a message..."
-                    className="bg-black border-2 border-white/20 rounded-lg px-3 py-3 text-white"
-                  />
+                  CLEAR CHAT
+                </button>
+              )}
 
-                  <button className="bg-red-600 hover:bg-red-700 rounded-lg border-2 border-black font-black py-3">
-                    SEND
-                  </button>
-                </form>
-              </Panel>
+              <div className="h-72 overflow-y-auto bg-black/70 rounded-xl p-3 mb-3 space-y-3">
+                {messages.length === 0 && (
+                  <p className="text-gray-400">No messages yet ❤️</p>
+                )}
 
-              <Panel title="📚 PALABRA DEL DÍA">
-                <div className="bg-black/70 border-2 border-purple-500 rounded-xl p-4">
-                  <h3 className="text-4xl font-black text-yellow-300">
-                    {dailyWord.word}
-                  </h3>
+                {messages.map((msg) => (
+                  <div key={msg.id} className="flex gap-3">
+                    <img
+                      src={msg.avatar}
+                      alt=""
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
 
-                  <p className="text-white text-lg">{dailyWord.meaning}</p>
+                    <div>
+                      <p className="font-black text-cyan-300">{msg.name}</p>
+                      <p>{msg.text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-                  <p className="italic text-gray-300 mt-2">
-                    “{dailyWord.example}”
-                  </p>
-                </div>
-              </Panel>
-            </div>
+              <form
+                onSubmit={sendMessage}
+                className="grid grid-cols-1 sm:grid-cols-[1fr_90px] gap-2"
+              >
+                <input
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Type a message..."
+                  className="bg-black border-2 border-white/20 rounded-lg px-3 py-3 text-white"
+                />
 
-            <div className="space-y-4">
-              <ComicPhoto src={photos[1]} label="BEST BUDDIES!" />
-              <ComicPhoto
-                src={photos[3]}
-                label="LITTLE MEMORIES, BIG LOVE!"
-                tall
-              />
-            </div>
+                <button className="bg-red-600 rounded-lg font-black py-3">
+                  SEND
+                </button>
+              </form>
+            </Panel>
+
+            <Panel title="📚 PALABRA DEL DÍA">
+              <div className="bg-black/70 rounded-xl p-4">
+                <h3 className="text-4xl font-black text-yellow-300">
+                  {dailyWord.word}
+                </h3>
+
+                <p>{dailyWord.meaning}</p>
+
+                <p className="italic mt-2">"{dailyWord.example}"</p>
+              </div>
+            </Panel>
           </div>
 
-          <div className="mt-6 bg-white text-black font-black text-center py-3 border-4 border-black rotate-[-1deg] text-sm sm:text-base">
-            ONE FAMILY. ONE HEART. ALWAYS CONNECTED. 💜
+          <div className="space-y-4">
+            <ComicPhoto src={photos[1]} label="BEST BUDDIES!" />
+            <ComicPhoto src={photos[3]} label="LITTLE MEMORIES, BIG LOVE!" />
           </div>
         </div>
       </div>
@@ -457,28 +444,19 @@ export default function Home() {
 
 function Panel({ title, children }) {
   return (
-    <div className="bg-[#060814] border-4 border-purple-700 rounded-2xl p-4 shadow-[6px_6px_0px_#000]">
-      <h2 className="text-2xl sm:text-3xl md:text-4xl font-black italic mb-4">
-        {title}
-      </h2>
-
+    <div className="bg-[#060814] border-4 border-purple-700 rounded-2xl p-4">
+      <h2 className="text-3xl font-black italic mb-4">{title}</h2>
       {children}
     </div>
   );
 }
 
-function ComicPhoto({ src, label, tall }) {
+function ComicPhoto({ src, label }) {
   return (
-    <div className="relative bg-white border-4 border-black p-2 rotate-[-2deg] shadow-[7px_7px_0px_#000]">
-      <div
-        className={`overflow-hidden ${
-          tall ? "h-[360px] sm:h-[420px]" : "h-[300px] sm:h-[330px]"
-        }`}
-      >
-        <img src={src} alt="" className="w-full h-full object-cover" />
-      </div>
+    <div className="bg-white border-4 border-black p-2">
+      <img src={src} alt="" className="w-full h-[340px] object-cover" />
 
-      <div className="absolute bottom-4 left-3 right-3 bg-white text-black border-4 border-black font-black text-center px-3 py-2 text-lg sm:text-2xl italic">
+      <div className="bg-white text-black border-4 border-black font-black text-center px-3 py-2 text-xl italic mt-2">
         {label} ❤️
       </div>
     </div>
