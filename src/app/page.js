@@ -49,11 +49,62 @@ const spanishWords = [
   { word: "Juntos", meaning: "Together", example: "Aunque estemos lejos, estamos juntos." },
 ];
 
+const weeklyChallenges = [
+  {
+    title: "Try Something New",
+    task: "Try a new food, song, show, hobby, or place this week.",
+    followUp: "Come back and tell the family what you tried and if you liked it.",
+  },
+  {
+    title: "Family Song Pick",
+    task: "Each person picks one song they like this week.",
+    followUp: "Share the song name in the chat and why you picked it.",
+  },
+  {
+    title: "Kindness Mission",
+    task: "Do one kind thing for someone without expecting anything back.",
+    followUp: "Tell us what you did and how it made you feel.",
+  },
+  {
+    title: "Memory Week",
+    task: "Share one favorite memory with Dad, Isaak, or Rachel.",
+    followUp: "Post it in the family chat.",
+  },
+  {
+    title: "Learn Something",
+    task: "Learn one new fact, skill, word, or idea this week.",
+    followUp: "Teach it to the family in the chat.",
+  },
+  {
+    title: "Outside Challenge",
+    task: "Spend at least 15 minutes outside one day this week.",
+    followUp: "Tell us what you saw, heard, or felt.",
+  },
+  {
+    title: "Watch Something New",
+    task: "Try a new show, movie, cartoon, anime, or documentary.",
+    followUp: "Give it a rating from 1 to 10.",
+  },
+  {
+    title: "Gratitude Challenge",
+    task: "Name three things you are thankful for this week.",
+    followUp: "Share them in the family chat.",
+  },
+];
+
 function getDailySpanishWord() {
   const today = new Date();
   const start = new Date(today.getFullYear(), 0, 0);
   const dayOfYear = Math.floor((today - start) / (1000 * 60 * 60 * 24));
   return spanishWords[dayOfYear % spanishWords.length];
+}
+
+function getWeeklyChallenge() {
+  const today = new Date();
+  const start = new Date(today.getFullYear(), 0, 1);
+  const diff = today - start;
+  const weekNumber = Math.floor(diff / (1000 * 60 * 60 * 24 * 7));
+  return weeklyChallenges[weekNumber % weeklyChallenges.length];
 }
 
 export default function Home() {
@@ -66,6 +117,7 @@ export default function Home() {
 
   const [topic, setTopic] = useState("What made you smile today?");
   const [dailyWord] = useState(getDailySpanishWord());
+  const [weeklyChallenge] = useState(getWeeklyChallenge());
 
   const topics = [
     "What made you smile today?",
@@ -291,6 +343,16 @@ export default function Home() {
                 >
                   ⚡ NEW TOPIC
                 </button>
+              </Panel>
+
+              <Panel title="⚡ WEEKLY FAMILY CHALLENGE">
+                <div className="bg-yellow-300 text-black rounded-2xl border-4 border-black p-4">
+                  <h3 className="text-2xl font-black mb-2">
+                    {weeklyChallenge.title}
+                  </h3>
+                  <p className="font-bold">{weeklyChallenge.task}</p>
+                  <p className="mt-3 italic">{weeklyChallenge.followUp}</p>
+                </div>
               </Panel>
 
               <Panel title="💬 FAMILY CHAT">
