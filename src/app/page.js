@@ -10,6 +10,9 @@ import {
   orderBy,
   onSnapshot,
   serverTimestamp,
+  deleteDoc,
+  doc,
+  getDocs,
 } from "firebase/firestore";
 
 import {
@@ -17,6 +20,21 @@ import {
   onAuthStateChanged,
   signOut,
 } from "firebase/auth";
+
+const profiles = {
+  "dad@medinaconnect.com": {
+    name: "Dad",
+    avatar: "/photos/dad-baby.jpeg",
+  },
+  "isaak@medinaconnect.com": {
+    name: "Isaak",
+    avatar: "/photos/kids-diner.jpeg",
+  },
+  "rachel@medinaconnect.com": {
+    name: "Rachel",
+    avatar: "/photos/dad-daughter-baby.jpeg",
+  },
+};
 
 export default function Home() {
   const [user, setUser] = useState(null);
@@ -44,6 +62,9 @@ export default function Home() {
     "/photos/dad-daughter-baby.jpeg",
   ];
 
+  const currentProfile = user ? profiles[user.email] : null;
+  const isDad = user?.email === "dad@medinaconnect.com";
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -59,9 +80,9 @@ export default function Home() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setMessages(
-        snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
+        snapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
         }))
       );
     });
@@ -89,12 +110,41 @@ export default function Home() {
     if (!message.trim()) return;
 
     await addDoc(collection(db, "messages"), {
-      name: user.email,
+      name: currentProfile?.name || user.email,
+      email: user.email,
+      avatar: currentProfile?.avatar || "/photos/dad-baby.jpeg",
       text: message,
       createdAt: serverTimestamp(),
     });
 
     setMessage("");
+  }
+
+  async function deleteMessage(messageId) {
+    if (!isDad) return;
+
+    const confirmDelete = window.confirm("Delete this message?");
+    if (!confirmDelete) return;
+
+    await deleteDoc(doc(db, "messages", messageId));
+  }
+
+  async function clearChat() {
+    if (!isDad) return;
+
+    const confirmClear = window.confirm(
+      "Are you sure you want to delete ALL family chat messages?"
+    );
+
+    if (!confirmClear) return;
+
+    const snapshot = await getDocs(collection(db, "messages"));
+
+    const deletePromises = snapshot.docs.map((messageDoc) =>
+      deleteDoc(doc(db, "messages", messageDoc.id))
+    );
+
+    await Promise.all(deletePromises);
   }
 
   function randomTopic() {
@@ -158,7 +208,16 @@ export default function Home() {
         />
 
         <div className="relative z-10 px-3 py-4">
-          <div className="flex justify-end mb-2">
+          <div className="flex justify-between items-center mb-2">
+            <div className="flex items-center gap-2 bg-black/70 border border-white/20 px-3 py-2 rounded-lg">
+              <img
+                src={currentProfile?.avatar}
+                alt=""
+                className="w-8 h-8 rounded-full object-cover border-2 border-white"
+              />
+              <span className="font-black">{currentProfile?.name}</span>
+            </div>
+
             <button
               onClick={logout}
               className="bg-black/70 border border-white/20 px-4 py-2 rounded-lg"
@@ -170,18 +229,14 @@ export default function Home() {
           <div className="text-center mb-4">
             <h1
               className="text-5xl sm:text-6xl md:text-8xl font-black italic leading-none tracking-tight"
-              style={{
-                textShadow: "6px 6px 0px #000",
-              }}
+              style={{ textShadow: "6px 6px 0px #000" }}
             >
               MEDINA
             </h1>
 
             <h2
               className="text-4xl sm:text-5xl md:text-7xl font-black italic text-red-500 -mt-1 md:-mt-2"
-              style={{
-                textShadow: "6px 6px 0px #000",
-              }}
+              style={{ textShadow: "6px 6px 0px #000" }}
             >
               CONNECT ❤️
             </h2>
@@ -195,11 +250,7 @@ export default function Home() {
 
           <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr_280px] gap-4">
             <div className="space-y-4">
-              <ComicPhoto
-                src={photos[0]}
-                label="FAMILY IS MY SUPERPOWER!"
-              />
-
+              <ComicPhoto src={photos[0]} label="FAMILY IS MY SUPERPOWER!" />
               <ComicPhoto
                 src={photos[2]}
                 label="TOGETHER WE CAN DO ANYTHING!"
@@ -222,7 +273,16 @@ export default function Home() {
               </Panel>
 
               <Panel title="💬 FAMILY CHAT">
-                <div className="h-72 overflow-y-auto bg-black/80 border border-white/20 rounded-xl p-3 mb-3">
+                {isDad && (
+                  <button
+                    onClick={clearChat}
+                    className="mb-3 w-full bg-red-800 hover:bg-red-900 text-white font-black py-2 rounded-xl border-2 border-black"
+                  >
+                    🗑️ CLEAR CHAT
+                  </button>
+                )}
+
+                <div className="h-72 overflow-y-auto bg-black/80 border border-white/20 rounded-xl p-3 mb-3 space-y-3">
                   {messages.length === 0 && (
                     <p className="text-gray-400">No messages yet ❤️</p>
                   )}
@@ -230,10 +290,33 @@ export default function Home() {
                   {messages.map((msg) => (
                     <div
                       key={msg.id}
-                      className="border-b border-white/10 py-2"
+                      className="flex gap-3 border-b border-white/10 pb-3"
                     >
-                      <p className="font-black text-cyan-300">{msg.name}</p>
-                      <p>{msg.text}</p>
+                      <img
+                        src={
+                          msg.avatar ||
+                          profiles[msg.email]?.avatar ||
+                          "/photos/dad-baby.jpeg"
+                        }
+                        alt=""
+                        className="w-10 h-10 rounded-full object-cover border-2 border-white flex-shrink-0"
+                      />
+
+                      <div className="flex-1">
+                        <p className="font-black text-cyan-300">
+                          {msg.name || profiles[msg.email]?.name || msg.email}
+                        </p>
+                        <p>{msg.text}</p>
+                      </div>
+
+                      {isDad && (
+                        <button
+                          onClick={() => deleteMessage(msg.id)}
+                          className="text-red-400 hover:text-red-300 font-black text-sm"
+                        >
+                          DELETE
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -272,7 +355,6 @@ export default function Home() {
 
             <div className="space-y-4">
               <ComicPhoto src={photos[1]} label="BEST BUDDIES!" />
-
               <ComicPhoto
                 src={photos[3]}
                 label="LITTLE MEMORIES, BIG LOVE!"
