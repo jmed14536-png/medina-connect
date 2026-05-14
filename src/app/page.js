@@ -529,14 +529,12 @@ export default function Home() {
 <Panel title="🎵 FAMILY MUSIC">
 
   <iframe
-    style={{ borderRadius: "12px" }}
-    src="https://open.spotify.com/embed/playlist/37i9dQZF1F5p3rmiWPIYgZ"
-    width="100%"
-    height="352"
-    frameBorder="0"
-    allowFullScreen=""
-    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-    loading="lazy"
+ style={{ borderRadius: "12px" }}
+  src="https://open.spotify.com/embed/playlist/37i9dQZF1F5p3rmiWPIYgZ?theme=0"
+  width="100%"
+  height="352"
+  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+  loading="lazy"
   ></iframe>
 
 </Panel>
