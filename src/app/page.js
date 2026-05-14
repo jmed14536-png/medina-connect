@@ -530,7 +530,7 @@ export default function Home() {
 
   <iframe
     style={{ borderRadius: "12px" }}
-    src="https://open.spotify.com/embed/playlist/37i9dQZF1F5p3rmiWPIYgZ?utm_source=generator"
+    src="https://open.spotify.com/embed/playlist/37i9dQZF1F5p3rmiWPIYgZ"
     width="100%"
     height="352"
     frameBorder="0"
