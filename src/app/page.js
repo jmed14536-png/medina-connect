@@ -526,7 +526,20 @@ export default function Home() {
               </form>
 
             </Panel>
+<Panel title="🎵 FAMILY MUSIC">
 
+  <iframe
+    style={{ borderRadius: "12px" }}
+    src="https://open.spotify.com/embed/playlist/37i9dQZF1F5p3rmiWPIYgZ?utm_source=generator"
+    width="100%"
+    height="352"
+    frameBorder="0"
+    allowFullScreen=""
+    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+    loading="lazy"
+  ></iframe>
+
+</Panel>
             <Panel title="📚 PALABRA DEL DÍA">
 
               <div className="bg-black/70 rounded-xl p-4">
