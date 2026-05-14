@@ -526,28 +526,7 @@ export default function Home() {
               </form>
 
             </Panel>
-<Panel title="🎵 FAMILY MUSIC">
 
-  <iframe
-<Panel title="🎵 FAMILY MUSIC">
-  <div className="bg-black/70 rounded-xl p-4 text-center border border-white/20">
-    <p className="font-black text-xl mb-3">
-      Family Playlist 🎧
-    </p>
-
-    <a
-      href="https://open.spotify.com/playlist/37i9dQZF1F5p3rmiWPIYgZ?si=a48cc72be027478b"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-block bg-green-500 text-black font-black px-5 py-3 rounded-xl"
-    >
-      Open in Spotify
-    </a>
-  </div>
-</Panel>
-  ></iframe>
-
-</Panel>
             <Panel title="📚 PALABRA DEL DÍA">
 
               <div className="bg-black/70 rounded-xl p-4">
