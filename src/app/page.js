@@ -529,12 +529,22 @@ export default function Home() {
 <Panel title="🎵 FAMILY MUSIC">
 
   <iframe
- style={{ borderRadius: "12px" }}
-  src="https://open.spotify.com/embed/playlist/37i9dQZF1F5p3rmiWPIYgZ?theme=0"
-  width="100%"
-  height="352"
-  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-  loading="lazy"
+<Panel title="🎵 FAMILY MUSIC">
+  <div className="bg-black/70 rounded-xl p-4 text-center border border-white/20">
+    <p className="font-black text-xl mb-3">
+      Family Playlist 🎧
+    </p>
+
+    <a
+      href="https://open.spotify.com/playlist/37i9dQZF1F5p3rmiWPIYgZ?si=a48cc72be027478b"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-block bg-green-500 text-black font-black px-5 py-3 rounded-xl"
+    >
+      Open in Spotify
+    </a>
+  </div>
+</Panel>
   ></iframe>
 
 </Panel>
